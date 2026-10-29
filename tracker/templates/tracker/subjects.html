@@ -1,0 +1,49 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}Subjects | Deadline Tracker{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Subjects</h1>
+
+<div class="two-col">
+  <section class="card form-card">
+    <h2>Add a subject</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="field {% if field.errors %}has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<small class="help">{{ field.help_text }}</small>{% endif %}
+          {% for error in field.errors %}<small class="error">{{ error }}</small>{% endfor %}
+        </div>
+      {% endfor %}
+      <button class="btn btn-primary" type="submit">Add Subject</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Your subjects</h2>
+    {% if subjects %}
+    <ul class="subject-list">
+      {% for s in subjects %}
+      <li>
+        <div>
+          <strong>{{ s.name }}</strong>
+          {% if s.code %}<span class="code">{{ s.code }}</span>{% endif %}
+          <div class="a-desc">{{ s.total }} assignment{{ s.total|pluralize }}</div>
+        </div>
+        <form method="post" action="{% url 'tracker:subject_delete' s.pk %}"
+              onsubmit="return confirm('Delete {{ s.name|escapejs }} and all of its assignments?');">
+          {% csrf_token %}
+          <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="empty">No subjects yet. Add one to start tracking assignments.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

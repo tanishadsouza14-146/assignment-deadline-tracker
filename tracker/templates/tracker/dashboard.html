@@ -1,0 +1,118 @@
+{% extends "tracker/base.html" %}
+
+{% block content %}
+<h1 class="page-title">Dashboard</h1>
+
+<section class="stats">
+  <div class="stat"><span class="stat-num">{{ stats.total }}</span><span class="stat-label">Total</span></div>
+  <div class="stat stat-pending"><span class="stat-num">{{ stats.pending }}</span><span class="stat-label">Pending</span></div>
+  <div class="stat stat-soon"><span class="stat-num">{{ stats.due_soon }}</span><span class="stat-label">Due Soon</span></div>
+  <div class="stat stat-overdue"><span class="stat-num">{{ stats.overdue }}</span><span class="stat-label">Overdue</span></div>
+  <div class="stat stat-done"><span class="stat-num">{{ stats.completed }}</span><span class="stat-label">Completed</span></div>
+</section>
+
+<section class="card">
+  <div class="progress-head">
+    <strong>Overall progress</strong>
+    <span>{{ stats.percent }}% complete</span>
+  </div>
+  <div class="progress"><div class="progress-bar" style="width: {{ stats.percent }}%"></div></div>
+</section>
+
+{% if subject_summary %}
+<section class="subject-chips">
+  {% for s in subject_summary %}
+    <a class="chip" href="?subject={{ s.pk }}">{{ s.name }} <em>{{ s.pending }} pending / {{ s.total }}</em></a>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="card">
+  <form method="get" class="filters">
+    <input class="form-control" type="search" name="q" value="{{ selected.q }}" placeholder="Search title or notes...">
+
+    <select class="form-control" name="subject">
+      <option value="">All subjects</option>
+      {% for s in subjects %}
+        <option value="{{ s.pk }}" {% if selected.subject == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+
+    <select class="form-control" name="status">
+      <option value="">All statuses</option>
+      {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if selected.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+      <option value="due_soon" {% if selected.status == "due_soon" %}selected{% endif %}>Due soon</option>
+      <option value="overdue" {% if selected.status == "overdue" %}selected{% endif %}>Overdue</option>
+    </select>
+
+    <select class="form-control" name="priority">
+      <option value="">All priorities</option>
+      {% for value, label in priority_choices %}
+        <option value="{{ value }}" {% if selected.priority == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <button class="btn btn-primary" type="submit">Filter</button>
+    {% if filters_active %}<a class="btn btn-ghost" href="{% url 'tracker:dashboard' %}">Clear</a>{% endif %}
+  </form>
+</section>
+
+<section class="card table-card">
+  <div class="table-head">
+    <h2>Assignments <small>({{ result_count }})</small></h2>
+  </div>
+
+  {% if assignments %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Assignment</th><th>Subject</th><th>Deadline</th>
+        <th>Priority</th><th>Status</th><th class="actions-col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in assignments %}
+      <tr class="{% if a.is_completed %}row-done{% elif a.is_overdue %}row-overdue{% endif %}">
+        <td data-label="Assignment">
+          <strong class="a-title">{{ a.title }}</strong>
+          {% if a.description %}<div class="a-desc">{{ a.description|truncatechars:80 }}</div>{% endif %}
+        </td>
+        <td data-label="Subject">{{ a.subject.name }}</td>
+        <td data-label="Deadline">
+          {{ a.due_date|date:"D, d M Y" }}
+          <div class="due-text {% if a.is_overdue %}text-danger{% elif a.days_left <= 3 and not a.is_completed %}text-warn{% endif %}">{{ a.due_text }}</div>
+        </td>
+        <td data-label="Priority"><span class="badge badge-{{ a.priority }}">{{ a.get_priority_display }}</span></td>
+        <td data-label="Status"><span class="badge badge-{{ a.status }}">{{ a.get_status_display }}</span></td>
+        <td data-label="Actions" class="actions">
+          <form method="post" action="{% url 'tracker:assignment_toggle' a.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if a.is_completed %}
+              <button class="btn btn-ghost btn-sm" type="submit">Undo</button>
+            {% else %}
+              <button class="btn btn-success btn-sm" type="submit">&#10003; Done</button>
+            {% endif %}
+          </form>
+          <a class="btn btn-ghost btn-sm" href="{% url 'tracker:assignment_edit' a.pk %}">Edit</a>
+          <a class="btn btn-danger btn-sm" href="{% url 'tracker:assignment_delete' a.pk %}">Delete</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    {% if filters_active %}
+      <p>No assignments match your filters.</p>
+      <a class="btn btn-ghost" href="{% url 'tracker:dashboard' %}">Clear filters</a>
+    {% else %}
+      <p>No assignments yet. Add your first one and never miss a deadline!</p>
+      <a class="btn btn-primary" href="{% url 'tracker:assignment_add' %}">+ Add Assignment</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
